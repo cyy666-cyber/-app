@@ -18,8 +18,7 @@ const messageSchema = new mongoose.Schema({
   // 会话ID（用于分组聊天记录）
   sessionId: {
     type: String,
-    required: true,
-    index: true
+    required: true
   },
   // 上下文信息
   context: {
@@ -57,10 +56,20 @@ const messageSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// 索引：按用户和会话查询
-messageSchema.index({ user: 1, sessionId: 1, createdAt: 1 });
-messageSchema.index({ user: 1, createdAt: -1 });
-messageSchema.index({ sessionId: 1, createdAt: 1 });
+// 索引配置
+// 复合索引（优化聊天记录查询）
+messageSchema.index({ user: 1, sessionId: 1, createdAt: 1 }); // 用户会话消息（按时间正序）
+messageSchema.index({ user: 1, createdAt: -1 }); // 用户所有消息（按时间倒序）
+messageSchema.index({ sessionId: 1, createdAt: 1 }); // 会话消息（按时间正序）
+messageSchema.index({ user: 1, 'context.type': 1, createdAt: -1 }); // 用户+上下文类型
+
+// 单字段索引
+messageSchema.index({ user: 1 }); // 按用户查询
+messageSchema.index({ sessionId: 1 }); // 按会话查询
+messageSchema.index({ role: 1 }); // 按角色查询（user/assistant）
+messageSchema.index({ 'context.type': 1 }); // 按上下文类型查询
+messageSchema.index({ addedToKnowledgeBase: 1 }); // 查询已整理到知识库的消息
+messageSchema.index({ createdAt: -1 }); // 按时间排序
 
 module.exports = mongoose.model('Message', messageSchema);
 

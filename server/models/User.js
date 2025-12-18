@@ -86,6 +86,20 @@ const userSchema = new mongoose.Schema({
   timestamps: true // 自动添加 createdAt 和 updatedAt
 });
 
+// 索引配置
+// 注意：email 和 username 字段已有 unique: true，会自动创建唯一索引
+// 这里只添加其他必要的索引
+
+// 单字段索引
+userSchema.index({ school: 1 }); // 按学校查询
+userSchema.index({ createdAt: -1 }); // 按创建时间排序
+userSchema.index({ 'stats.learningHours': -1 }); // 排行榜：学习时长
+userSchema.index({ 'stats.completedPlans': -1 }); // 排行榜：完成计划数
+userSchema.index({ 'stats.forumPosts': -1 }); // 排行榜：论坛发帖数
+
+// 复合索引
+userSchema.index({ school: 1, 'stats.learningHours': -1 }); // 按学校的学习排行榜
+
 // 保存前加密密码
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) {

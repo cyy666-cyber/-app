@@ -53,7 +53,8 @@ const skillTreeSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true,
-    unique: true
+    unique: true,
+    index: true // 显式索引
   },
   rootNodes: [{
     type: mongoose.Schema.Types.ObjectId,
@@ -79,6 +80,17 @@ const skillTreeSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+// SkillTree 索引
+// 注意：user 字段已有 unique: true，会自动创建唯一索引
+skillTreeSchema.index({ createdAt: -1 }); // 按创建时间排序
+
+// SkillNode 索引
+skillNodeSchema.index({ category: 1 }); // 按分类查询
+skillNodeSchema.index({ completed: 1 }); // 按完成状态查询
+skillNodeSchema.index({ level: -1 }); // 按等级排序
+skillNodeSchema.index({ category: 1, completed: 1 }); // 分类+完成状态
+skillNodeSchema.index({ createdAt: -1 }); // 按创建时间排序
 
 // 创建 SkillNode 模型
 const SkillNode = mongoose.model('SkillNode', skillNodeSchema);

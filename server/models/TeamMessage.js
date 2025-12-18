@@ -60,10 +60,19 @@ const teamMessageSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// 索引：按队伍和时间查询（用于聊天室）
-teamMessageSchema.index({ team: 1, createdAt: -1 });
-teamMessageSchema.index({ sender: 1, createdAt: -1 });
-teamMessageSchema.index({ team: 1, type: 1 });
+// 索引配置
+// 复合索引（优化聊天室查询）
+teamMessageSchema.index({ team: 1, createdAt: -1 }); // 队伍消息列表（按时间倒序）
+teamMessageSchema.index({ team: 1, type: 1, createdAt: -1 }); // 队伍消息（按类型和时间）
+teamMessageSchema.index({ team: 1, isAI: 1, createdAt: -1 }); // AI 消息查询
+teamMessageSchema.index({ sender: 1, createdAt: -1 }); // 用户发送的消息
+
+// 单字段索引
+teamMessageSchema.index({ team: 1 }); // 按队伍查询
+teamMessageSchema.index({ sender: 1 }); // 按发送者查询
+teamMessageSchema.index({ type: 1 }); // 按消息类型查询
+teamMessageSchema.index({ replyTo: 1 }); // 回复的消息
+teamMessageSchema.index({ createdAt: -1 }); // 按时间排序
 
 module.exports = mongoose.model('TeamMessage', teamMessageSchema);
 

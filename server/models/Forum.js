@@ -67,9 +67,25 @@ const forumSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// 索引
-forumSchema.index({ category: 1, createdAt: -1 });
-forumSchema.index({ 'members.user': 1 });
+// 索引配置
+// 复合索引
+forumSchema.index({ category: 1, createdAt: -1 }); // 按分类和时间排序
+forumSchema.index({ category: 1, 'stats.memberCount': -1 }); // 按分类和成员数排序
+forumSchema.index({ creator: 1, createdAt: -1 }); // 用户创建的论坛
+forumSchema.index({ 'settings.isPublic': 1, createdAt: -1 }); // 公开论坛
+
+// 单字段索引
+forumSchema.index({ creator: 1 }); // 按创建者查询
+forumSchema.index({ 'stats.memberCount': -1 }); // 热门论坛（按成员数）
+forumSchema.index({ 'stats.postCount': -1 }); // 热门论坛（按帖子数）
+forumSchema.index({ 'stats.lastActivityAt': -1 }); // 活跃论坛
+forumSchema.index({ createdAt: -1 }); // 按创建时间排序
+
+// 嵌套字段索引
+forumSchema.index({ 'members.user': 1 }); // 查询用户加入的论坛
+forumSchema.index({ 'members.user': 1, 'members.role': 1 }); // 查询用户角色
+
+// 全文搜索索引
 forumSchema.index({ name: 'text', description: 'text' });
 
 module.exports = mongoose.model('Forum', forumSchema);

@@ -70,9 +70,21 @@ const knowledgeBaseSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// 索引：按用户和分类查询
-knowledgeBaseSchema.index({ user: 1, category: 1 });
-knowledgeBaseSchema.index({ user: 1, createdAt: -1 });
+// 索引配置
+// 复合索引
+knowledgeBaseSchema.index({ user: 1, category: 1 }); // 按用户和分类查询
+knowledgeBaseSchema.index({ user: 1, createdAt: -1 }); // 用户知识库（按时间）
+knowledgeBaseSchema.index({ user: 1, importance: -1 }); // 用户知识库（按重要性）
+knowledgeBaseSchema.index({ user: 1, category: 1, importance: -1 }); // 用户+分类+重要性
+
+// 单字段索引
+knowledgeBaseSchema.index({ user: 1 }); // 按用户查询
+knowledgeBaseSchema.index({ category: 1 }); // 按分类查询
+knowledgeBaseSchema.index({ importance: -1 }); // 按重要性排序
+knowledgeBaseSchema.index({ viewCount: -1 }); // 热门知识（按浏览量）
+knowledgeBaseSchema.index({ createdAt: -1 }); // 按创建时间排序
+knowledgeBaseSchema.index({ lastViewedAt: -1 }); // 最近查看
+
 // 全文搜索索引
 knowledgeBaseSchema.index({ title: 'text', content: 'text', tags: 'text' });
 

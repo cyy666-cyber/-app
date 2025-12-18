@@ -104,10 +104,27 @@ const teamSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// 索引
-teamSchema.index({ leader: 1, createdAt: -1 });
-teamSchema.index({ 'members.user': 1 });
-teamSchema.index({ category: 1, createdAt: -1 });
+// 索引配置
+// 复合索引
+teamSchema.index({ leader: 1, createdAt: -1 }); // 队长创建的队伍
+teamSchema.index({ category: 1, createdAt: -1 }); // 按分类和时间排序
+teamSchema.index({ category: 1, 'settings.isPublic': 1 }); // 按分类和公开状态
+teamSchema.index({ 'settings.isPublic': 1, createdAt: -1 }); // 公开队伍
+
+// 单字段索引
+teamSchema.index({ leader: 1 }); // 按队长查询
+teamSchema.index({ category: 1 }); // 按分类查询
+teamSchema.index({ 'settings.isPublic': 1 }); // 查询公开/私有队伍
+teamSchema.index({ 'stats.lastActivityAt': -1 }); // 活跃队伍排序
+teamSchema.index({ 'stats.completedGoals': -1 }); // 按完成目标数排序
+teamSchema.index({ createdAt: -1 }); // 按创建时间排序
+
+// 嵌套字段索引
+teamSchema.index({ 'members.user': 1 }); // 查询用户加入的队伍
+teamSchema.index({ 'members.user': 1, 'members.status': 1 }); // 查询用户状态
+teamSchema.index({ 'members.user': 1, 'members.role': 1 }); // 查询用户角色
+
+// 全文搜索索引
 teamSchema.index({ name: 'text', description: 'text' });
 
 module.exports = mongoose.model('Team', teamSchema);

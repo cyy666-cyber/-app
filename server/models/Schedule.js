@@ -61,9 +61,18 @@ const scheduleSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// 索引：按用户和日期查询
-scheduleSchema.index({ user: 1, date: 1 });
-scheduleSchema.index({ user: 1, status: 1 });
+// 索引配置
+// 复合索引（优化常用查询）
+scheduleSchema.index({ user: 1, date: 1 }); // 按用户和日期查询
+scheduleSchema.index({ user: 1, status: 1 }); // 按用户和状态查询
+scheduleSchema.index({ user: 1, date: 1, status: 1 }); // 复合查询：用户+日期+状态
+scheduleSchema.index({ user: 1, type: 1, date: 1 }); // 按用户、类型和日期查询
+
+// 单字段索引
+scheduleSchema.index({ date: 1 }); // 按日期查询（用于统计）
+scheduleSchema.index({ status: 1 }); // 按状态查询
+scheduleSchema.index({ type: 1 }); // 按类型查询
+scheduleSchema.index({ createdAt: -1 }); // 按创建时间排序
 
 module.exports = mongoose.model('Schedule', scheduleSchema);
 
