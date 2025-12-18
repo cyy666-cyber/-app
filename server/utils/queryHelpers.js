@@ -1,14 +1,16 @@
 /**
  * 查询辅助工具
  * 提供优化的查询方法，使用 lean() 提高性能
+ * 包含 select() 字段限制、populate() 深度限制和 Redis 缓存
  */
 
 const { User, Schedule, Post, Forum, Team, KnowledgeBase } = require('../models');
+const { cacheQuery, clearUserCache, clearForumCache, clearLeaderboardCache } = require('./cache');
 
 /**
  * 使用 lean() 查询用户列表（用于列表展示，不需要修改）
  * @param {Object} filter - 查询条件
- * @param {Object} options - 选项 { page, limit, sort, fields }
+ * @param {Object} options - 选项 { page, limit, sort, fields, useCache }
  * @returns {Promise<Array>} 用户数组
  */
 const getUsersLean = async (filter = {}, options = {}) => {
@@ -16,15 +18,26 @@ const getUsersLean = async (filter = {}, options = {}) => {
     page = 1,
     limit = 20,
     sort = { createdAt: -1 },
-    fields = 'username email avatar school stats'
+    fields = 'username email avatar school stats',
+    useCache = true,
+    cacheTTL = 300 // 5分钟
   } = options;
 
-  return await User.find(filter)
-    .select(fields)
-    .sort(sort)
-    .skip((page - 1) * limit)
-    .limit(limit)
-    .lean(); // 返回纯 JavaScript 对象，提高性能
+  const queryFn = async () => {
+    return await User.find(filter)
+      .select(fields) // 限制返回字段
+      .sort(sort)
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean(); // 返回纯 JavaScript 对象，提高性能
+  };
+
+  // 使用缓存
+  if (useCache) {
+    return await cacheQuery('users', { filter, page, limit, sort, fields }, queryFn, cacheTTL);
+  }
+
+  return await queryFn();
 };
 
 /**
@@ -60,36 +73,68 @@ const getPostsLean = async (filter = {}, options = {}) => {
     page = 1,
     limit = 20,
     sort = { isPinned: -1, createdAt: -1 },
-    populateAuthor = true
+    populateAuthor = true,
+    populateDepth = 1, // populate 深度限制
+    useCache = true,
+    cacheTTL = 180 // 3分钟
   } = options;
 
-  let query = Post.find(filter)
-    .sort(sort)
-    .skip((page - 1) * limit)
-    .limit(limit);
+  const queryFn = async () => {
+    let query = Post.find(filter)
+      .select('title content tags likes replyCount viewCount createdAt author forum') // 限制字段
+      .sort(sort)
+      .skip((page - 1) * limit)
+      .limit(limit);
 
-  // 如果需要填充作者信息，使用 lean(false) 或单独查询
-  if (populateAuthor) {
-    query = query.populate('author', 'username avatar');
+    // 如果需要填充作者信息，限制深度和字段
+    if (populateAuthor && populateDepth > 0) {
+      query = query.populate({
+        path: 'author',
+        select: 'username avatar', // 只选择需要的字段
+        options: { limit: 1 } // 限制数量（如果是一对多）
+      });
+    }
+
+    return await query.lean();
+  };
+
+  // 使用缓存
+  if (useCache) {
+    return await cacheQuery('posts', { filter, page, limit, sort }, queryFn, cacheTTL);
   }
 
-  return await query.lean();
+  return await queryFn();
 };
 
 /**
  * 使用 lean() 查询排行榜数据（高性能）
  * @param {String} type - 排行榜类型 ('learningHours', 'completedPlans', 'forumPosts')
  * @param {Number} limit - 返回数量
+ * @param {Object} options - 选项 { useCache, cacheTTL }
  * @returns {Promise<Array>} 排行榜数组
  */
-const getLeaderboardLean = async (type = 'learningHours', limit = 10) => {
+const getLeaderboardLean = async (type = 'learningHours', limit = 10, options = {}) => {
+  const {
+    useCache = true,
+    cacheTTL = 600 // 10分钟（排行榜变化不频繁）
+  } = options;
+
   const sortField = `stats.${type}`;
   
-  return await User.find({})
-    .select('username avatar school stats')
-    .sort({ [sortField]: -1 })
-    .limit(limit)
-    .lean();
+  const queryFn = async () => {
+    return await User.find({})
+      .select('username avatar school stats') // 只选择需要的字段
+      .sort({ [sortField]: -1 })
+      .limit(limit)
+      .lean();
+  };
+
+  // 使用缓存（排行榜数据变化不频繁，适合缓存）
+  if (useCache) {
+    return await cacheQuery('leaderboard', { type, limit }, queryFn, cacheTTL);
+  }
+
+  return await queryFn();
 };
 
 /**
@@ -152,16 +197,48 @@ const getTeamsLean = async (filter = {}, options = {}) => {
   const {
     page = 1,
     limit = 20,
-    sort = { createdAt: -1 }
+    sort = { createdAt: -1 },
+    populateLeader = true,
+    populateMembers = false, // 默认不填充成员（避免深度过深）
+    populateDepth = 1, // populate 深度限制
+    useCache = true,
+    cacheTTL = 300
   } = options;
 
-  return await Team.find(filter)
-    .select('name description category tags settings stats members')
-    .populate('leader', 'username avatar')
-    .sort(sort)
-    .skip((page - 1) * limit)
-    .limit(limit)
-    .lean();
+  const queryFn = async () => {
+    let query = Team.find(filter)
+      .select('name description category tags settings stats members leader createdAt') // 限制字段
+      .sort(sort)
+      .skip((page - 1) * limit)
+      .limit(limit);
+
+    // 填充队长信息（限制深度和字段）
+    if (populateLeader && populateDepth > 0) {
+      query = query.populate({
+        path: 'leader',
+        select: 'username avatar', // 只选择需要的字段
+        options: { limit: 1 }
+      });
+    }
+
+    // 填充成员信息（谨慎使用，避免深度过深）
+    if (populateMembers && populateDepth > 0) {
+      query = query.populate({
+        path: 'members.user',
+        select: 'username avatar', // 只选择需要的字段
+        options: { limit: 10 } // 限制成员数量
+      });
+    }
+
+    return await query.lean();
+  };
+
+  // 使用缓存
+  if (useCache) {
+    return await cacheQuery('teams', { filter, page, limit, sort }, queryFn, cacheTTL);
+  }
+
+  return await queryFn();
 };
 
 /**

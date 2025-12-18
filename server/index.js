@@ -3,12 +3,18 @@ const express = require('express');
 const cors = require('cors');
 const OpenAI = require('openai');
 const connectDB = require('./config/database');
+const { initRedis } = require('./config/redis');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
 // 连接数据库
 connectDB();
+
+// 初始化 Redis（可选，如果 Redis 不可用会继续运行）
+initRedis().catch(err => {
+  console.log('⚠️  Redis 初始化失败，将不使用缓存功能');
+});
 
 // 中间件配置
 app.use(cors());
