@@ -2,13 +2,13 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const OpenAI = require('openai');
-const connectDB = require('./config/database');
+const { connectDB } = require('./config/database');
 const { initRedis } = require('./config/redis');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// 连接数据库
+// 连接数据库（带连接池配置）
 connectDB();
 
 // 初始化 Redis（可选，如果 Redis 不可用会继续运行）
@@ -29,6 +29,23 @@ const openai = new OpenAI({
 // 健康检查接口
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
+});
+
+// 数据库健康检查接口
+app.get('/api/health/db', async (req, res) => {
+  try {
+    const { getHealthReport } = require('./utils/dbMonitor');
+    const report = await getHealthReport();
+    res.json({
+      status: report.connection.isConnected ? 'ok' : 'error',
+      ...report
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      error: error.message
+    });
+  }
 });
 
 // DeepSeek AI 聊天接口示例
