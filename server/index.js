@@ -20,6 +20,10 @@ initRedis().catch(err => {
 app.use(cors());
 app.use(express.json());
 
+// 路由配置
+const authRoutes = require('./routes/authRoutes');
+app.use('/api/auth', authRoutes);
+
 // 初始化 OpenAI 客户端（DeepSeek API 与 OpenAI 格式完全兼容）
 const openai = new OpenAI({
   apiKey: process.env.DEEPSEEK_API_KEY,
