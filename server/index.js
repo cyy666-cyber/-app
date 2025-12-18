@@ -26,6 +26,7 @@ const scheduleRoutes = require('./routes/scheduleRoutes');
 const skillTreeRoutes = require('./routes/skillTreeRoutes');
 const knowledgeBaseRoutes = require('./routes/knowledgeBaseRoutes');
 const forumRoutes = require('./routes/forumRoutes');
+const teamRoutes = require('./routes/teamRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/schedules', scheduleRoutes);
@@ -33,6 +34,8 @@ app.use('/api/skill-tree', skillTreeRoutes);
 app.use('/api/knowledge-base', knowledgeBaseRoutes);
 app.use('/api/forums', forumRoutes);
 app.use('/api', forumRoutes); // 帖子路由也在 forumRoutes 中（/api/posts, /api/replies）
+app.use('/api/teams', teamRoutes);
+app.use('/api', teamRoutes); // 组队消息路由也在 teamRoutes 中（/api/teams/messages）
 
 // 初始化 OpenAI 客户端（DeepSeek API 与 OpenAI 格式完全兼容）
 const openai = new OpenAI({
