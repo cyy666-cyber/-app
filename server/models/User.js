@@ -28,6 +28,11 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: '' // 头像URL
   },
+  school: {
+    type: String,
+    trim: true,
+    default: '' // 学校名称
+  },
   // 学习相关
   skillTree: {
     type: mongoose.Schema.Types.ObjectId,
@@ -50,6 +55,25 @@ const userSchema = new mongoose.Schema({
   teams: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Team'
+  }],
+  teamHistory: [{
+    team: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Team'
+    },
+    joinedAt: {
+      type: Date,
+      default: Date.now
+    },
+    leftAt: {
+      type: Date,
+      default: null
+    },
+    role: {
+      type: String,
+      enum: ['member', 'leader'],
+      default: 'member'
+    }
   }],
   // 统计信息
   stats: {
