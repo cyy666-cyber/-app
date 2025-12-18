@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "build:ios": "npm run build && npx cap sync ios",
     "sync:ios": "npx cap sync ios",
-    "open:ios": "npx cap open ios"
+    "open:ios": "npx cap open ios",
+    "dev:ios": "cp capacitor.config.dev.ts capacitor.config.ts && npx cap sync ios",
+    "prod:ios": "cp capacitor.config.ts capacitor.config.ts.bak 2>/dev/null || true && git checkout capacitor.config.ts && npx cap sync ios"
   },
   "dependencies": {
     "@capacitor/cli": "^8.0.0",

@@ -16,13 +16,19 @@ function App() {
           <img src={reactLogo} className="logo react" alt="React logo" />
         </a>
       </div>
-      <h1>Vite + React</h1>
+      <h1>DeepSeek Mobile App</h1>
       <div className="card">
         <button onClick={() => setCount((count) => count + 1)}>
           count is {count}
         </button>
         <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
+          🎉 实时预览测试成功！
+        </p>
+        <p style={{ color: '#646cff', marginTop: '10px' }}>
+          修改代码后，模拟器会自动刷新
+        </p>
+        <p style={{ color: '#42b883', marginTop: '10px', fontWeight: 'bold' }}>
+          ✅ 如果你看到这条消息，说明实时预览功能正常工作！
         </p>
       </div>
       <p className="read-the-docs">
