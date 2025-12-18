@@ -37,18 +37,18 @@ const {
 } = require('../controllers/replyController');
 
 /**
- * @route   GET /api/forums
- * @desc    获取论坛列表
- * @access  Public（可选认证）
- */
-router.get('/', optionalAuth, getForums);
-
-/**
  * @route   GET /api/forums/my-forums
  * @desc    获取用户加入的论坛列表
  * @access  Private
  */
 router.get('/my-forums', authenticate, getMyForums);
+
+/**
+ * @route   GET /api/forums
+ * @desc    获取论坛列表
+ * @access  Public（可选认证）
+ */
+router.get('/', optionalAuth, getForums);
 
 /**
  * @route   POST /api/forums
@@ -107,27 +107,6 @@ router.post('/:forumId/posts', authenticate, createPost);
 router.get('/:forumId/posts', optionalAuth, getPosts);
 
 /**
- * @route   GET /api/posts/:id
- * @desc    获取单个帖子详情
- * @access  Public（可选认证）
- */
-router.get('/posts/:id', optionalAuth, getPost);
-
-/**
- * @route   PUT /api/posts/:id
- * @desc    更新帖子
- * @access  Private（仅作者和管理员）
- */
-router.put('/posts/:id', authenticate, updatePost);
-
-/**
- * @route   DELETE /api/posts/:id
- * @desc    删除帖子
- * @access  Private（仅作者和管理员）
- */
-router.delete('/posts/:id', authenticate, deletePost);
-
-/**
  * @route   POST /api/posts/:id/like
  * @desc    点赞/取消点赞帖子
  * @access  Private
@@ -149,6 +128,27 @@ router.post('/posts/:id/favorite', authenticate, toggleFavoritePost);
 router.post('/posts/:id/pin', authenticate, togglePinPost);
 
 /**
+ * @route   GET /api/posts/:id
+ * @desc    获取单个帖子详情
+ * @access  Public（可选认证）
+ */
+router.get('/posts/:id', optionalAuth, getPost);
+
+/**
+ * @route   PUT /api/posts/:id
+ * @desc    更新帖子
+ * @access  Private（仅作者和管理员）
+ */
+router.put('/posts/:id', authenticate, updatePost);
+
+/**
+ * @route   DELETE /api/posts/:id
+ * @desc    删除帖子
+ * @access  Private（仅作者和管理员）
+ */
+router.delete('/posts/:id', authenticate, deletePost);
+
+/**
  * @route   POST /api/posts/:postId/replies
  * @desc    创建回复
  * @access  Private
@@ -161,6 +161,13 @@ router.post('/posts/:postId/replies', authenticate, createReply);
  * @access  Public（可选认证）
  */
 router.get('/posts/:postId/replies', optionalAuth, getReplies);
+
+/**
+ * @route   POST /api/replies/:id/like
+ * @desc    点赞/取消点赞回复
+ * @access  Private
+ */
+router.post('/replies/:id/like', authenticate, toggleLikeReply);
 
 /**
  * @route   GET /api/replies/:id
@@ -182,13 +189,6 @@ router.put('/replies/:id', authenticate, updateReply);
  * @access  Private（仅作者和管理员）
  */
 router.delete('/replies/:id', authenticate, deleteReply);
-
-/**
- * @route   POST /api/replies/:id/like
- * @desc    点赞/取消点赞回复
- * @access  Private
- */
-router.post('/replies/:id/like', authenticate, toggleLikeReply);
 
 module.exports = router;
 
