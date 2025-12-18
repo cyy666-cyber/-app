@@ -45,7 +45,7 @@ const userSchema = new mongoose.Schema({
     type: String,
     unique: true,
     sparse: true, // 允许 null，但如果有值则必须唯一
-    default: null
+    default: undefined // 使用 undefined 而不是 null，避免 sparse 索引问题
   },
   wechatUnionId: {
     type: String,
