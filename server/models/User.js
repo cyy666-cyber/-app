@@ -174,8 +174,7 @@ const userSchema = new mongoose.Schema({
 
 // 单字段索引
 userSchema.index({ school: 1 }); // 按学校查询
-userSchema.index({ phone: 1 }); // 按手机号查询
-userSchema.index({ wechatOpenId: 1 }); // 按微信 OpenID 查询
+// phone 和 wechatOpenId 已有 unique: true 和 sparse: true，会自动创建唯一索引
 userSchema.index({ createdAt: -1 }); // 按创建时间排序
 userSchema.index({ 'stats.learningHours': -1 }); // 排行榜：学习时长
 userSchema.index({ 'stats.completedPlans': -1 }); // 排行榜：完成计划数
@@ -200,11 +199,10 @@ userSchema.pre('save', async function() {
 });
 
 // 保存前验证：至少需要一种登录方式
-userSchema.pre('save', function(next) {
+userSchema.pre('save', async function() {
   if (!this.email && !this.phone && !this.wechatOpenId) {
-    return next(new Error('至少需要提供邮箱、手机号或微信 OpenID 中的一种'));
+    throw new Error('至少需要提供邮箱、手机号或微信 OpenID 中的一种');
   }
-  next();
 });
 
 // 比较密码的方法

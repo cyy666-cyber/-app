@@ -683,12 +683,16 @@ const phoneLogin = async (req, res) => {
         });
       }
 
+      const isNewUser = true;
       user = new User({
         username,
         phone,
         school: req.body.school || ''
       });
       await user.save();
+      var isNew = true;
+    } else {
+      var isNew = false;
     }
 
     // 生成 JWT token
@@ -703,7 +707,7 @@ const phoneLogin = async (req, res) => {
 
     res.json({
       success: true,
-      message: user.isNew ? '注册成功' : '登录成功',
+      message: isNew ? '注册成功' : '登录成功',
       data: {
         token,
         refreshToken: refreshTokenValue,
@@ -788,6 +792,7 @@ const wechatLogin = async (req, res) => {
         counter++;
       }
 
+      var isNew = true;
       user = new User({
         username: finalUsername,
         wechatOpenId: openid,
@@ -798,6 +803,7 @@ const wechatLogin = async (req, res) => {
       });
       await user.save();
     } else {
+      var isNew = false;
       // 更新微信信息
       if (nickname) user.wechatNickname = nickname;
       if (avatar) user.wechatAvatar = avatar;
@@ -817,7 +823,7 @@ const wechatLogin = async (req, res) => {
 
     res.json({
       success: true,
-      message: user.isNew ? '注册成功' : '登录成功',
+      message: isNew ? '注册成功' : '登录成功',
       data: {
         token,
         refreshToken: refreshTokenValue,
