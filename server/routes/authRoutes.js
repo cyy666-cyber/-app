@@ -12,7 +12,12 @@ const {
   resetPassword,
   updateProfile,
   changePassword,
-  refreshToken
+  refreshToken,
+  sendPhoneCode,
+  phoneLogin,
+  wechatLogin,
+  submitSchoolVerification,
+  getSchoolVerification
 } = require('../controllers/authController');
 
 /**
@@ -78,6 +83,41 @@ router.get('/me', authenticate, async (req, res) => {
     }
   });
 });
+
+/**
+ * @route   POST /api/auth/phone/send-code
+ * @desc    发送手机验证码
+ * @access  Public
+ */
+router.post('/phone/send-code', sendPhoneCode);
+
+/**
+ * @route   POST /api/auth/phone/login
+ * @desc    手机号验证码登录/注册
+ * @access  Public
+ */
+router.post('/phone/login', phoneLogin);
+
+/**
+ * @route   POST /api/auth/wechat/login
+ * @desc    微信登录/注册
+ * @access  Public
+ */
+router.post('/wechat/login', wechatLogin);
+
+/**
+ * @route   POST /api/auth/school/verify
+ * @desc    提交学校认证
+ * @access  Private
+ */
+router.post('/school/verify', authenticate, submitSchoolVerification);
+
+/**
+ * @route   GET /api/auth/school/verify
+ * @desc    获取学校认证状态
+ * @access  Private
+ */
+router.get('/school/verify', authenticate, getSchoolVerification);
 
 module.exports = router;
 

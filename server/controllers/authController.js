@@ -6,6 +6,9 @@
 const User = require('../models/User');
 const { generateToken, verifyToken } = require('../utils/jwt');
 const { generatePasswordResetToken, hashToken } = require('../utils/tokenGenerator');
+const { generateVerificationCode, sendVerificationCode } = require('../utils/sms');
+const { verifyWechatCode } = require('../utils/wechat');
+const crypto = require('crypto');
 
 /**
  * 用户注册
@@ -554,6 +557,401 @@ const refreshToken = async (req, res) => {
   }
 };
 
+/**
+ * 手机号注册/登录（发送验证码）
+ * @route POST /api/auth/phone/send-code
+ * @access Public
+ */
+const sendPhoneCode = async (req, res) => {
+  try {
+    const { phone } = req.body;
+
+    if (!phone) {
+      return res.status(400).json({
+        success: false,
+        message: '请提供手机号'
+      });
+    }
+
+    // 验证手机号格式
+    const phoneRegex = /^1[3-9]\d{9}$/;
+    if (!phoneRegex.test(phone)) {
+      return res.status(400).json({
+        success: false,
+        message: '请输入有效的手机号'
+      });
+    }
+
+    // 生成验证码
+    const code = generateVerificationCode();
+    
+    // 存储验证码（使用 Redis 或内存存储，5分钟过期）
+    // 这里简化处理，实际应该使用 Redis
+    const codeKey = `phone_code_${phone}`;
+    const codeExpiry = Date.now() + 5 * 60 * 1000; // 5分钟过期
+    
+    // TODO: 使用 Redis 存储验证码
+    // await setCache(codeKey, { code, phone, expiresAt: codeExpiry }, 300);
+
+    // 发送验证码
+    const sent = await sendVerificationCode(phone, code);
+    
+    if (!sent) {
+      return res.status(500).json({
+        success: false,
+        message: '发送验证码失败，请稍后重试'
+      });
+    }
+
+    // 开发环境返回验证码
+    res.json({
+      success: true,
+      message: '验证码已发送',
+      ...(process.env.NODE_ENV === 'development' && {
+        code, // 仅开发环境返回
+        expiresIn: 300 // 5分钟
+      })
+    });
+
+  } catch (error) {
+    console.error('发送验证码错误:', error);
+    res.status(500).json({
+      success: false,
+      message: '服务器错误',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+/**
+ * 手机号注册/登录（验证码登录）
+ * @route POST /api/auth/phone/login
+ * @access Public
+ */
+const phoneLogin = async (req, res) => {
+  try {
+    const { phone, code, username } = req.body;
+
+    if (!phone || !code) {
+      return res.status(400).json({
+        success: false,
+        message: '请提供手机号和验证码'
+      });
+    }
+
+    // 验证手机号格式
+    const phoneRegex = /^1[3-9]\d{9}$/;
+    if (!phoneRegex.test(phone)) {
+      return res.status(400).json({
+        success: false,
+        message: '请输入有效的手机号'
+      });
+    }
+
+    // TODO: 从 Redis 验证验证码
+    // const storedCode = await getCache(`phone_code_${phone}`);
+    // if (!storedCode || storedCode.code !== code) {
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: '验证码错误或已过期'
+    //   });
+    // }
+
+    // 开发环境：简单验证（实际应该从 Redis 获取）
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`⚠️  开发环境：跳过验证码验证，手机号: ${phone}, 验证码: ${code}`);
+    }
+
+    // 查找或创建用户
+    let user = await User.findOne({ phone });
+
+    if (!user) {
+      // 新用户注册
+      if (!username) {
+        return res.status(400).json({
+          success: false,
+          message: '新用户需要提供用户名'
+        });
+      }
+
+      // 检查用户名是否已存在
+      const existingUser = await User.findOne({ username });
+      if (existingUser) {
+        return res.status(409).json({
+          success: false,
+          message: '用户名已被使用'
+        });
+      }
+
+      user = new User({
+        username,
+        phone,
+        school: req.body.school || ''
+      });
+      await user.save();
+    }
+
+    // 生成 JWT token
+    const tokenPayload = {
+      userId: user._id.toString(),
+      username: user.username,
+      phone: user.phone
+    };
+
+    const token = generateToken(tokenPayload, '7d');
+    const refreshTokenValue = generateToken(tokenPayload, '30d');
+
+    res.json({
+      success: true,
+      message: user.isNew ? '注册成功' : '登录成功',
+      data: {
+        token,
+        refreshToken: refreshTokenValue,
+        user: {
+          id: user._id,
+          username: user.username,
+          phone: user.phone,
+          email: user.email,
+          school: user.school,
+          avatar: user.avatar,
+          schoolVerified: user.schoolVerified,
+          stats: user.stats
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('手机号登录错误:', error);
+
+    if (error.name === 'ValidationError') {
+      const errors = {};
+      Object.keys(error.errors).forEach(key => {
+        errors[key] = error.errors[key].message;
+      });
+
+      return res.status(400).json({
+        success: false,
+        message: '输入验证失败',
+        errors
+      });
+    }
+
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      return res.status(409).json({
+        success: false,
+        message: `${field === 'phone' ? '手机号' : '用户名'}已被使用`,
+        field
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: '服务器错误，登录失败',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+/**
+ * 微信登录
+ * @route POST /api/auth/wechat/login
+ * @access Public
+ */
+const wechatLogin = async (req, res) => {
+  try {
+    const { code, nickname, avatar } = req.body;
+
+    if (!code) {
+      return res.status(400).json({
+        success: false,
+        message: '请提供微信登录 code'
+      });
+    }
+
+    // 验证微信 code 并获取 OpenID
+    const wechatInfo = await verifyWechatCode(code);
+    const { openid, unionid } = wechatInfo;
+
+    // 查找或创建用户
+    let user = await User.findOne({ wechatOpenId: openid });
+
+    if (!user) {
+      // 新用户注册
+      const username = nickname || `微信用户_${openid.slice(-8)}`;
+      
+      // 确保用户名唯一
+      let finalUsername = username;
+      let counter = 1;
+      while (await User.findOne({ username: finalUsername })) {
+        finalUsername = `${username}_${counter}`;
+        counter++;
+      }
+
+      user = new User({
+        username: finalUsername,
+        wechatOpenId: openid,
+        wechatUnionId: unionid,
+        wechatNickname: nickname || '',
+        wechatAvatar: avatar || '',
+        school: req.body.school || ''
+      });
+      await user.save();
+    } else {
+      // 更新微信信息
+      if (nickname) user.wechatNickname = nickname;
+      if (avatar) user.wechatAvatar = avatar;
+      if (unionid && !user.wechatUnionId) user.wechatUnionId = unionid;
+      await user.save();
+    }
+
+    // 生成 JWT token
+    const tokenPayload = {
+      userId: user._id.toString(),
+      username: user.username,
+      wechatOpenId: user.wechatOpenId
+    };
+
+    const token = generateToken(tokenPayload, '7d');
+    const refreshTokenValue = generateToken(tokenPayload, '30d');
+
+    res.json({
+      success: true,
+      message: user.isNew ? '注册成功' : '登录成功',
+      data: {
+        token,
+        refreshToken: refreshTokenValue,
+        user: {
+          id: user._id,
+          username: user.username,
+          email: user.email,
+          phone: user.phone,
+          school: user.school,
+          avatar: user.wechatAvatar || user.avatar,
+          wechatNickname: user.wechatNickname,
+          schoolVerified: user.schoolVerified,
+          stats: user.stats
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('微信登录错误:', error);
+    res.status(500).json({
+      success: false,
+      message: '服务器错误，登录失败',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+/**
+ * 提交学校认证
+ * @route POST /api/auth/school/verify
+ * @access Private
+ */
+const submitSchoolVerification = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { studentId, verificationMethod, verificationProof } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: '用户不存在'
+      });
+    }
+
+    // 检查是否已认证
+    if (user.schoolVerified) {
+      return res.status(400).json({
+        success: false,
+        message: '您已经完成学校认证'
+      });
+    }
+
+    if (!user.school) {
+      return res.status(400).json({
+        success: false,
+        message: '请先设置学校信息'
+      });
+    }
+
+    if (!studentId || !verificationMethod) {
+      return res.status(400).json({
+        success: false,
+        message: '请提供学号和认证方式'
+      });
+    }
+
+    // 更新认证信息
+    user.schoolVerification = {
+      studentId,
+      verificationMethod,
+      verificationStatus: 'pending',
+      verificationProof: verificationProof || null,
+      verifiedAt: null,
+      verifiedBy: null
+    };
+
+    await user.save();
+
+    res.json({
+      success: true,
+      message: '学校认证申请已提交，请等待审核',
+      data: {
+        verification: user.schoolVerification
+      }
+    });
+
+  } catch (error) {
+    console.error('提交学校认证错误:', error);
+    res.status(500).json({
+      success: false,
+      message: '服务器错误，提交失败',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+/**
+ * 获取学校认证状态
+ * @route GET /api/auth/school/verify
+ * @access Private
+ */
+const getSchoolVerification = async (req, res) => {
+  try {
+    const userId = req.userId;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: '用户不存在'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: '获取认证状态成功',
+      data: {
+        schoolVerified: user.schoolVerified,
+        school: user.school,
+        verification: user.schoolVerification
+      }
+    });
+
+  } catch (error) {
+    console.error('获取学校认证状态错误:', error);
+    res.status(500).json({
+      success: false,
+      message: '服务器错误',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -561,6 +959,11 @@ module.exports = {
   resetPassword,
   updateProfile,
   changePassword,
-  refreshToken
+  refreshToken,
+  sendPhoneCode,
+  phoneLogin,
+  wechatLogin,
+  submitSchoolVerification,
+  getSchoolVerification
 };
 

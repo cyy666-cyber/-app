@@ -12,17 +12,51 @@ const userSchema = new mongoose.Schema({
   },
   email: {
     type: String,
-    required: [true, '邮箱是必需的'],
+    required: function() {
+      return !this.phone && !this.wechatOpenId; // 邮箱、手机号、微信至少需要一个
+    },
     unique: true,
+    sparse: true, // 允许 null，但如果有值则必须唯一
     lowercase: true,
     trim: true,
     match: [/^\S+@\S+\.\S+$/, '请输入有效的邮箱地址']
   },
+  phone: {
+    type: String,
+    required: function() {
+      return !this.email && !this.wechatOpenId; // 邮箱、手机号、微信至少需要一个
+    },
+    unique: true,
+    sparse: true, // 允许 null，但如果有值则必须唯一
+    trim: true,
+    match: [/^1[3-9]\d{9}$/, '请输入有效的手机号']
+  },
   password: {
     type: String,
-    required: [true, '密码是必需的'],
+    required: function() {
+      return !this.wechatOpenId; // 微信登录不需要密码
+    },
     minlength: [6, '密码至少需要6个字符'],
     select: false // 默认查询时不返回密码字段
+  },
+  // 微信相关
+  wechatOpenId: {
+    type: String,
+    unique: true,
+    sparse: true, // 允许 null，但如果有值则必须唯一
+    default: null
+  },
+  wechatUnionId: {
+    type: String,
+    default: null
+  },
+  wechatNickname: {
+    type: String,
+    default: ''
+  },
+  wechatAvatar: {
+    type: String,
+    default: ''
   },
   avatar: {
     type: String,
@@ -32,6 +66,40 @@ const userSchema = new mongoose.Schema({
     type: String,
     trim: true,
     default: '' // 学校名称
+  },
+  // 学校认证相关
+  schoolVerified: {
+    type: Boolean,
+    default: false // 是否已认证学校
+  },
+  schoolVerification: {
+    studentId: {
+      type: String,
+      default: null // 学号
+    },
+    verificationMethod: {
+      type: String,
+      enum: ['email', 'student_card', 'manual'],
+      default: null
+    },
+    verificationStatus: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected'],
+      default: 'pending'
+    },
+    verificationProof: {
+      type: String, // 认证材料 URL
+      default: null
+    },
+    verifiedAt: {
+      type: Date,
+      default: null
+    },
+    verifiedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User', // 审核人员
+      default: null
+    }
   },
   // 学习相关
   skillTree: {
@@ -106,24 +174,37 @@ const userSchema = new mongoose.Schema({
 
 // 单字段索引
 userSchema.index({ school: 1 }); // 按学校查询
+userSchema.index({ phone: 1 }); // 按手机号查询
+userSchema.index({ wechatOpenId: 1 }); // 按微信 OpenID 查询
 userSchema.index({ createdAt: -1 }); // 按创建时间排序
 userSchema.index({ 'stats.learningHours': -1 }); // 排行榜：学习时长
 userSchema.index({ 'stats.completedPlans': -1 }); // 排行榜：完成计划数
 userSchema.index({ 'stats.forumPosts': -1 }); // 排行榜：论坛发帖数
+userSchema.index({ schoolVerified: 1 }); // 按学校认证状态查询
+userSchema.index({ 'schoolVerification.verificationStatus': 1 }); // 按认证审核状态查询
 
 // 复合索引
 userSchema.index({ school: 1, 'stats.learningHours': -1 }); // 按学校的学习排行榜
+userSchema.index({ school: 1, schoolVerified: 1 }); // 按学校和认证状态查询
 
 // 保存前加密密码
 userSchema.pre('save', async function() {
-  // 如果密码未修改，跳过加密
-  if (!this.isModified('password')) {
+  // 如果密码未修改或没有密码（微信登录），跳过加密
+  if (!this.isModified('password') || !this.password) {
     return;
   }
   
   // 加密密码
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
+});
+
+// 保存前验证：至少需要一种登录方式
+userSchema.pre('save', function(next) {
+  if (!this.email && !this.phone && !this.wechatOpenId) {
+    return next(new Error('至少需要提供邮箱、手机号或微信 OpenID 中的一种'));
+  }
+  next();
 });
 
 // 比较密码的方法

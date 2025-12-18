@@ -38,7 +38,8 @@ const authenticate = async (req, res, next) => {
     const decoded = verifyToken(token);
 
     // 4. 查找用户（确保用户仍然存在）
-    const user = await User.findById(decoded.userId).select('-password');
+    // 不排除密码字段，因为可能没有密码（微信登录）
+    const user = await User.findById(decoded.userId);
     if (!user) {
       return res.status(401).json({
         success: false,
