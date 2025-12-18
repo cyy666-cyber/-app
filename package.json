@@ -1,0 +1,13 @@
+{
+  "name": "deepseek-mobile-app",
+  "version": "1.0.0",
+  "description": "手机端app项目，集成DeepSeek AI大模型",
+  "scripts": {
+    "dev:client": "cd client && npm run dev",
+    "dev:server": "cd server && npm run dev"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
+
