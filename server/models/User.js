@@ -19,7 +19,8 @@ const userSchema = new mongoose.Schema({
     sparse: true, // 允许 null，但如果有值则必须唯一
     lowercase: true,
     trim: true,
-    match: [/^\S+@\S+\.\S+$/, '请输入有效的邮箱地址']
+    match: [/^\S+@\S+\.\S+$/, '请输入有效的邮箱地址'],
+    default: undefined // 使用 undefined 而不是 null，避免 sparse 索引问题
   },
   phone: {
     type: String,
@@ -29,7 +30,8 @@ const userSchema = new mongoose.Schema({
     unique: true,
     sparse: true, // 允许 null，但如果有值则必须唯一
     trim: true,
-    match: [/^1[3-9]\d{9}$/, '请输入有效的手机号']
+    match: [/^1[3-9]\d{9}$/, '请输入有效的手机号'],
+    default: undefined // 使用 undefined 而不是 null，避免 sparse 索引问题
   },
   password: {
     type: String,
