@@ -2,9 +2,13 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const OpenAI = require('openai');
+const connectDB = require('./config/database');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// 连接数据库
+connectDB();
 
 // 中间件配置
 app.use(cors());
@@ -50,7 +54,8 @@ app.post('/api/chat', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-  console.log(`Health check: http://localhost:${PORT}/api/health`);
+  console.log(`🚀 服务器运行在 http://localhost:${PORT}`);
+  console.log(`📊 健康检查: http://localhost:${PORT}/api/health`);
+  console.log(`💾 MongoDB: ${process.env.MONGODB_URI || 'mongodb://localhost:27017/deepseek-app'}`);
 });
 
