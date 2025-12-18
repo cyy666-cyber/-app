@@ -32,8 +32,7 @@ app.use('/api/schedules', scheduleRoutes);
 app.use('/api/skill-tree', skillTreeRoutes);
 app.use('/api/knowledge-base', knowledgeBaseRoutes);
 app.use('/api/forums', forumRoutes);
-app.use('/api/posts', forumRoutes); // 帖子路由也在 forumRoutes 中
-app.use('/api/replies', forumRoutes); // 回复路由也在 forumRoutes 中
+app.use('/api', forumRoutes); // 帖子路由也在 forumRoutes 中（/api/posts, /api/replies）
 
 // 初始化 OpenAI 客户端（DeepSeek API 与 OpenAI 格式完全兼容）
 const openai = new OpenAI({
