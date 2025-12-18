@@ -34,7 +34,8 @@ const userSchema = new mongoose.Schema({
   password: {
     type: String,
     required: function() {
-      return !this.wechatOpenId; // 微信登录不需要密码
+      // 如果有邮箱但没有微信 OpenID，则需要密码
+      return !!(this.email && !this.wechatOpenId);
     },
     minlength: [6, '密码至少需要6个字符'],
     select: false // 默认查询时不返回密码字段

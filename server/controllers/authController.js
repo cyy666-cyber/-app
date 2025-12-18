@@ -188,7 +188,9 @@ const login = async (req, res) => {
     const tokenPayload = {
       userId: user._id.toString(),
       username: user.username,
-      email: user.email
+      email: user.email,
+      phone: user.phone,
+      wechatOpenId: user.wechatOpenId
     };
 
     const token = generateToken(tokenPayload, '7d'); // Access token，7天过期
