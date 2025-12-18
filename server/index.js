@@ -22,7 +22,10 @@ app.use(express.json());
 
 // 路由配置
 const authRoutes = require('./routes/authRoutes');
+const scheduleRoutes = require('./routes/scheduleRoutes');
+
 app.use('/api/auth', authRoutes);
+app.use('/api/schedules', scheduleRoutes);
 
 // 初始化 OpenAI 客户端（DeepSeek API 与 OpenAI 格式完全兼容）
 const openai = new OpenAI({
@@ -52,16 +55,7 @@ app.get('/api/health/db', async (req, res) => {
   }
 });
 
-// 测试受保护的路由（需要认证）
-app.get('/api/auth/me', require('./middleware/auth').authenticate, async (req, res) => {
-  res.json({
-    success: true,
-    message: '获取用户信息成功',
-    data: {
-      user: req.user
-    }
-  });
-});
+// 获取当前用户信息（已移到 authRoutes.js）
 
 // DeepSeek AI 聊天接口示例
 app.post('/api/chat', async (req, res) => {

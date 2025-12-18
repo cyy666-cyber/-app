@@ -4,7 +4,16 @@
 
 const express = require('express');
 const router = express.Router();
-const { register, login } = require('../controllers/authController');
+const { authenticate } = require('../middleware/auth');
+const {
+  register,
+  login,
+  forgotPassword,
+  resetPassword,
+  updateProfile,
+  changePassword,
+  refreshToken
+} = require('../controllers/authController');
 
 /**
  * @route   POST /api/auth/register
@@ -19,6 +28,56 @@ router.post('/register', register);
  * @access  Public
  */
 router.post('/login', login);
+
+/**
+ * @route   POST /api/auth/forgot-password
+ * @desc    请求密码重置
+ * @access  Public
+ */
+router.post('/forgot-password', forgotPassword);
+
+/**
+ * @route   POST /api/auth/reset-password
+ * @desc    重置密码
+ * @access  Public
+ */
+router.post('/reset-password', resetPassword);
+
+/**
+ * @route   POST /api/auth/refresh-token
+ * @desc    刷新 Token
+ * @access  Public
+ */
+router.post('/refresh-token', refreshToken);
+
+/**
+ * @route   PUT /api/auth/profile
+ * @desc    更新用户信息
+ * @access  Private
+ */
+router.put('/profile', authenticate, updateProfile);
+
+/**
+ * @route   PUT /api/auth/change-password
+ * @desc    修改密码
+ * @access  Private
+ */
+router.put('/change-password', authenticate, changePassword);
+
+/**
+ * @route   GET /api/auth/me
+ * @desc    获取当前用户信息
+ * @access  Private
+ */
+router.get('/me', authenticate, async (req, res) => {
+  res.json({
+    success: true,
+    message: '获取用户信息成功',
+    data: {
+      user: req.user
+    }
+  });
+});
 
 module.exports = router;
 

@@ -81,6 +81,20 @@ const userSchema = new mongoose.Schema({
     completedPlans: { type: Number, default: 0 },
     forumPosts: { type: Number, default: 0 },
     teamCount: { type: Number, default: 0 }
+  },
+  // 密码重置相关
+  passwordResetToken: {
+    token: { type: String, default: null },
+    expiresAt: { type: Date, default: null }
+  },
+  // 邮箱验证相关
+  emailVerified: {
+    type: Boolean,
+    default: false
+  },
+  emailVerificationToken: {
+    token: { type: String, default: null },
+    expiresAt: { type: Date, default: null }
   }
 }, {
   timestamps: true // 自动添加 createdAt 和 updatedAt
