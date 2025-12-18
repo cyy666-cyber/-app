@@ -52,6 +52,17 @@ app.get('/api/health/db', async (req, res) => {
   }
 });
 
+// 测试受保护的路由（需要认证）
+app.get('/api/auth/me', require('./middleware/auth').authenticate, async (req, res) => {
+  res.json({
+    success: true,
+    message: '获取用户信息成功',
+    data: {
+      user: req.user
+    }
+  });
+});
+
 // DeepSeek AI 聊天接口示例
 app.post('/api/chat', async (req, res) => {
   try {

@@ -4,6 +4,7 @@
  */
 
 const User = require('../models/User');
+const { generateToken } = require('../utils/jwt');
 
 /**
  * 用户注册
@@ -138,7 +139,86 @@ const register = async (req, res) => {
   }
 };
 
+/**
+ * 用户登录
+ * @route POST /api/auth/login
+ * @access Public
+ */
+const login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // 1. 输入验证
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: '请提供邮箱和密码',
+        errors: {
+          email: !email ? '邮箱是必需的' : undefined,
+          password: !password ? '密码是必需的' : undefined
+        }
+      });
+    }
+
+    // 2. 查找用户（需要包含密码字段）
+    const user = await User.findOne({ email: email.toLowerCase().trim() })
+      .select('+password'); // 显式选择密码字段
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: '邮箱或密码错误'
+      });
+    }
+
+    // 3. 验证密码
+    const isPasswordValid = await user.comparePassword(password);
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: '邮箱或密码错误'
+      });
+    }
+
+    // 4. 生成 JWT token
+    const tokenPayload = {
+      userId: user._id.toString(),
+      username: user.username,
+      email: user.email
+    };
+
+    const token = generateToken(tokenPayload);
+
+    // 5. 返回成功响应（包含 token 和用户信息）
+    res.json({
+      success: true,
+      message: '登录成功',
+      data: {
+        token,
+        user: {
+          id: user._id,
+          username: user.username,
+          email: user.email,
+          school: user.school,
+          avatar: user.avatar,
+          stats: user.stats
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('登录错误:', error);
+
+    res.status(500).json({
+      success: false,
+      message: '服务器错误，登录失败',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
 module.exports = {
-  register
+  register,
+  login
 };
 

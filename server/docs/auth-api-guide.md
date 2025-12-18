@@ -254,10 +254,358 @@ const registerUser = async (userData) => {
    - 开发环境会返回详细错误信息
    - 生产环境只返回通用错误信息
 
-### 下一步
+---
 
-注册成功后，可以：
-1. 实现登录接口（使用 JWT）
-2. 实现用户信息查询接口
-3. 实现密码重置接口
+## 用户登录接口
+
+### 接口信息
+
+- **URL**: `/api/auth/login`
+- **方法**: `POST`
+- **访问权限**: 公开（无需认证）
+
+### 请求格式
+
+#### Headers
+```
+Content-Type: application/json
+```
+
+#### Request Body
+```json
+{
+  "email": "string (必需, 注册时使用的邮箱)",
+  "password": "string (必需, 用户密码)"
+}
+```
+
+### 请求示例
+
+```bash
+curl -X POST http://localhost:3001/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "zhangsan@example.com",
+    "password": "password123"
+  }'
+```
+
+### 响应格式
+
+#### 成功响应 (200 OK)
+
+```json
+{
+  "success": true,
+  "message": "登录成功",
+  "data": {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "user": {
+      "id": "507f1f77bcf86cd799439011",
+      "username": "zhangsan",
+      "email": "zhangsan@example.com",
+      "school": "清华大学",
+      "avatar": "",
+      "stats": {
+        "learningHours": 0,
+        "completedPlans": 0,
+        "forumPosts": 0,
+        "teamCount": 0
+      }
+    }
+  }
+}
+```
+
+#### 错误响应
+
+##### 1. 缺少必填字段 (400 Bad Request)
+
+```json
+{
+  "success": false,
+  "message": "请提供邮箱和密码",
+  "errors": {
+    "email": "邮箱是必需的",
+    "password": "密码是必需的"
+  }
+}
+```
+
+##### 2. 邮箱或密码错误 (401 Unauthorized)
+
+```json
+{
+  "success": false,
+  "message": "邮箱或密码错误"
+}
+```
+
+##### 3. 服务器错误 (500 Internal Server Error)
+
+```json
+{
+  "success": false,
+  "message": "服务器错误，登录失败",
+  "error": "错误详情（仅开发环境）"
+}
+```
+
+### 使用 Token
+
+登录成功后，客户端应该：
+
+1. **保存 Token**：将返回的 `token` 保存到本地存储（localStorage 或 sessionStorage）
+2. **在请求头中使用**：后续需要认证的请求，在 `Authorization` 头中携带 token
+
+#### 请求头格式
+
+```
+Authorization: Bearer <token>
+```
+
+### 使用示例
+
+#### JavaScript (Fetch)
+
+```javascript
+const loginUser = async (email, password) => {
+  try {
+    const response = await fetch('http://localhost:3001/api/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ email, password })
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      // 保存 token
+      localStorage.setItem('token', result.data.token);
+      localStorage.setItem('user', JSON.stringify(result.data.user));
+      
+      console.log('登录成功:', result.data.user);
+      return result.data;
+    } else {
+      console.error('登录失败:', result.message);
+      throw new Error(result.message);
+    }
+  } catch (error) {
+    console.error('请求错误:', error);
+    throw error;
+  }
+};
+
+// 使用认证 token 的请求
+const fetchWithAuth = async (url, options = {}) => {
+  const token = localStorage.getItem('token');
+  
+  return fetch(url, {
+    ...options,
+    headers: {
+      ...options.headers,
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  });
+};
+```
+
+#### Axios
+
+```javascript
+import axios from 'axios';
+
+const loginUser = async (email, password) => {
+  try {
+    const response = await axios.post(
+      'http://localhost:3001/api/auth/login',
+      { email, password }
+    );
+    
+    if (response.data.success) {
+      // 保存 token
+      localStorage.setItem('token', response.data.data.token);
+      
+      // 设置 axios 默认请求头
+      axios.defaults.headers.common['Authorization'] = 
+        `Bearer ${response.data.data.token}`;
+      
+      return response.data.data;
+    }
+  } catch (error) {
+    if (error.response) {
+      console.error('登录失败:', error.response.data.message);
+    } else {
+      console.error('请求错误:', error.message);
+    }
+    throw error;
+  }
+};
+```
+
+---
+
+## 获取当前用户信息接口
+
+### 接口信息
+
+- **URL**: `/api/auth/me`
+- **方法**: `GET`
+- **访问权限**: 需要认证（Bearer Token）
+
+### 请求格式
+
+#### Headers
+```
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+### 请求示例
+
+```bash
+curl -X GET http://localhost:3001/api/auth/me \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+### 响应格式
+
+#### 成功响应 (200 OK)
+
+```json
+{
+  "success": true,
+  "message": "获取用户信息成功",
+  "data": {
+    "user": {
+      "id": "507f1f77bcf86cd799439011",
+      "username": "zhangsan",
+      "email": "zhangsan@example.com",
+      "school": "清华大学",
+      "avatar": "",
+      "stats": {
+        "learningHours": 0,
+        "completedPlans": 0,
+        "forumPosts": 0,
+        "teamCount": 0
+      }
+    }
+  }
+}
+```
+
+#### 错误响应
+
+##### 1. 未提供 Token (401 Unauthorized)
+
+```json
+{
+  "success": false,
+  "message": "未提供认证 token，请先登录"
+}
+```
+
+##### 2. Token 无效或过期 (401 Unauthorized)
+
+```json
+{
+  "success": false,
+  "message": "Token 验证失败，请重新登录"
+}
+```
+
+---
+
+## JWT Token 说明
+
+### Token 结构
+
+JWT Token 由三部分组成，用 `.` 分隔：
+
+```
+header.payload.signature
+```
+
+### Token 载荷（Payload）
+
+```json
+{
+  "userId": "507f1f77bcf86cd799439011",
+  "username": "zhangsan",
+  "email": "zhangsan@example.com",
+  "iat": 1234567890,
+  "exp": 1234567890,
+  "iss": "deepseek-app",
+  "aud": "deepseek-app-users"
+}
+```
+
+### Token 过期时间
+
+- 默认过期时间：7 天
+- 可通过环境变量 `JWT_EXPIRE` 配置
+- 格式：数字 + 单位（如 `7d`, `24h`, `3600s`）
+
+### Token 安全
+
+1. **存储安全**：
+   - 不要将 token 存储在 cookie 中（除非设置了 HttpOnly）
+   - 建议使用 localStorage 或 sessionStorage
+   - 生产环境考虑使用 httpOnly cookie
+
+2. **传输安全**：
+   - 始终使用 HTTPS
+   - Token 在请求头中传输，不在 URL 中
+
+3. **过期处理**：
+   - Token 过期后需要重新登录
+   - 可以实现 refresh token 机制（可选）
+
+---
+
+## 认证中间件
+
+### 使用方式
+
+在需要认证的路由中使用 `authenticate` 中间件：
+
+```javascript
+const { authenticate } = require('./middleware/auth');
+
+// 受保护的路由
+router.get('/profile', authenticate, async (req, res) => {
+  // req.user 包含当前登录用户的信息
+  res.json({ user: req.user });
+});
+```
+
+### 可选认证
+
+对于可选认证的路由（如：如果登录则显示个性化内容，否则显示默认内容）：
+
+```javascript
+const { optionalAuth } = require('./middleware/auth');
+
+router.get('/posts', optionalAuth, async (req, res) => {
+  // req.user 可能为 undefined（如果未登录）
+  if (req.user) {
+    // 显示个性化内容
+  } else {
+    // 显示默认内容
+  }
+});
+```
+
+---
+
+## 下一步
+
+认证系统已完成，可以：
+1. 实现密码重置接口
+2. 实现用户信息更新接口
+3. 实现 token 刷新机制（可选）
+4. 开始实现业务功能接口
 
