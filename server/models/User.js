@@ -101,18 +101,15 @@ userSchema.index({ 'stats.forumPosts': -1 }); // 排行榜：论坛发帖数
 userSchema.index({ school: 1, 'stats.learningHours': -1 }); // 按学校的学习排行榜
 
 // 保存前加密密码
-userSchema.pre('save', async function(next) {
+userSchema.pre('save', async function() {
+  // 如果密码未修改，跳过加密
   if (!this.isModified('password')) {
-    return next();
+    return;
   }
   
-  try {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (error) {
-    next(error);
-  }
+  // 加密密码
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
 });
 
 // 比较密码的方法
