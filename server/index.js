@@ -23,9 +23,11 @@ app.use(express.json());
 // 路由配置
 const authRoutes = require('./routes/authRoutes');
 const scheduleRoutes = require('./routes/scheduleRoutes');
+const skillTreeRoutes = require('./routes/skillTreeRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/schedules', scheduleRoutes);
+app.use('/api/skill-tree', skillTreeRoutes);
 
 // 初始化 OpenAI 客户端（DeepSeek API 与 OpenAI 格式完全兼容）
 const openai = new OpenAI({
